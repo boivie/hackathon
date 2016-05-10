@@ -1,4 +1,3 @@
 *.csv
-bindata.go
 .idea/
 hackathon-evaluator

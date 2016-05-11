@@ -65,7 +65,7 @@ func main() {
 
 	if *hashFile != "" {
 		fmt.Fprintln(os.Stderr, "Generating hash")
-		i := 1000
+		i := 10
 		var mapping Mapping
 		for try := 0; try < 5; try++ {
 			start := time.Now()

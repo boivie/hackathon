@@ -75,6 +75,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%d iterations took %d ms\n", i, int(d))
 
 			i = int(float32(i) * 1000.0 / d)
+			if i <= 0 {
+				i = 1
+			}
 		}
 
 		output, err := os.Create("answers.hashed")

@@ -9,10 +9,8 @@ import (
 	"encoding/csv"
 	"io"
 	"bytes"
-	"golang.org/x/crypto/pbkdf2"
-	"crypto/sha1"
-	"time"
 	"encoding/gob"
+	"crypto/sha1"
 	"encoding/hex"
 )
 
@@ -20,14 +18,17 @@ var (
 	hashFile = flag.String("hash-file", "", "Generate hashed answers file")
 )
 
-var salt = []byte("ff262653190b95a5a485993c5dc924753b59b5c8")
+type Mapping map[string]string
 
-type Mapping struct {
-	Iterations int
-	Hashes     map[string]bool
+func hash(value string) string {
+	h := sha1.New()
+	io.WriteString(h, "Cheating is not allowed")
+	io.WriteString(h, value)
+	io.WriteString(h, "You will have to present how you solved it later anyway")
+	return hex.EncodeToString(h.Sum(nil))
 }
 
-func generate(fname string, iterations int) Mapping {
+func generate(fname string) Mapping {
 	file, err := os.Open(fname)
 	if err != nil {
 		log.Fatal(err)
@@ -35,9 +36,8 @@ func generate(fname string, iterations int) Mapping {
 	defer file.Close()
 
 	r := csv.NewReader(file)
-	var mapping Mapping
-	mapping.Iterations = iterations
-	mapping.Hashes = make(map[string]bool)
+	mapping := make(Mapping)
+
 	for {
 		record, err := r.Read()
 		if err == io.EOF {
@@ -47,15 +47,9 @@ func generate(fname string, iterations int) Mapping {
 			log.Fatal(err)
 		}
 
-		var b bytes.Buffer
-		b.Write([]byte("hackathon!:"))
-		for _, word := range record {
-			b.Write([]byte(strings.TrimSpace(word)))
-			b.Write([]byte(":"))
-		}
-
-		dk := pbkdf2.Key(b.Bytes(), salt, iterations, 32, sha1.New)
-		mapping.Hashes[hex.EncodeToString(dk)] = true
+		key := hash(strings.ToLower(strings.TrimSpace(record[0])))
+		value := hash(strings.ToLower(strings.TrimSpace(record[1])))
+		mapping[key] = value
 	}
 	return mapping
 }
@@ -65,20 +59,8 @@ func main() {
 
 	if *hashFile != "" {
 		fmt.Fprintln(os.Stderr, "Generating hash")
-		i := 10
 		var mapping Mapping
-		for try := 0; try < 5; try++ {
-			start := time.Now()
-			mapping = generate(*hashFile, i)
-
-			d := float32(time.Since(start) / time.Millisecond)
-			fmt.Fprintf(os.Stderr, "%d iterations took %d ms\n", i, int(d))
-
-			i = int(float32(i) * 1000.0 / d)
-			if i <= 0 {
-				i = 1
-			}
-		}
+		mapping = generate(*hashFile)
 
 		output, err := os.Create("answers.hashed")
 		if err != nil {
@@ -102,16 +84,58 @@ func main() {
 			log.Fatal(err)
 		}
 
-		var test Mapping = generate(flag.Arg(0), answer.Iterations)
+		file, err := os.Open(flag.Arg(0))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
 
-		correct := 0
-		for k, _ := range test.Hashes {
-			_, exists := answer.Hashes[k]
-			if exists {
-				correct++;
+		r := csv.NewReader(file)
+
+		true_positive := 0
+		false_positive := 0
+
+		asked := make(map[string]bool)
+		for {
+			record, err := r.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			u := hash(strings.ToLower(strings.TrimSpace(record[0])))
+			k := hash(strings.ToLower(strings.TrimSpace(record[1])))
+
+			_, exists := asked[u + ":" + k]
+			if !exists {
+				v, exists := answer[u]
+				if exists {
+					if v == k {
+						true_positive++
+					} else {
+						false_positive++
+					}
+				} else {
+					false_positive++
+				}
+				asked[u + ":" + k] = true
 			}
 		}
 
-		fmt.Printf("%d%% correct\n", int(100.0 * float32(correct) / float32(len(answer.Hashes))))
+		precision := float32(true_positive) / float32(true_positive + false_positive)
+		recall := float32(true_positive) / float32(len(answer))
+
+		var F1 float32
+		if precision + recall > 0 {
+			F1 = 2 * (precision * recall) / (precision + recall)
+		} else {
+			F1 = 0
+		}
+
+		fmt.Printf("Precision %.3f\n", precision)
+		fmt.Printf("Recall: %.3f\n", recall)
+		fmt.Printf("F1-score: %.3f\n", F1)
 	}
 }

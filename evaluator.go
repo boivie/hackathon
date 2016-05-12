@@ -134,8 +134,8 @@ func main() {
 			F1 = 0
 		}
 
-		fmt.Printf("Precision %.3f\n", precision)
-		fmt.Printf("Recall: %.3f\n", recall)
-		fmt.Printf("F1-score: %.3f\n", F1)
+		fmt.Printf("Precision %.5f\n", precision)
+		fmt.Printf("Recall: %.5f\n", recall)
+		fmt.Printf("F1-score: %.5f\n", F1)
 	}
 }

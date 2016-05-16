@@ -4,7 +4,9 @@ Just call it with your csv-file as the single argument:
 
 ```
 ./hackathon test.csv
-80% correct
+Precision 0.081
+Recall: 0.082
+F1-score: 0.082
 ```
 
 # To generate a new answers file

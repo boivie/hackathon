@@ -137,5 +137,11 @@ func main() {
 		fmt.Printf("Precision: %.5f\n", precision)
 		fmt.Printf("Recall: %.5f\n", recall)
 		fmt.Printf("F1-score: %.5f\n", F1)
+
+		if os.Getenv("HACKATHON_EXACT") == "1" {
+			fmt.Printf("True Positive: %d\n", true_positive)
+			fmt.Printf("False Positive: %d\n", false_positive)
+			fmt.Printf("Length of correct: %d\n", len(answer))
+		}
 	}
 }
